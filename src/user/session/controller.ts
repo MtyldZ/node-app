@@ -35,7 +35,7 @@ export class SessionController extends ControllerBase {
                 id: foundUser.id,
                 email: foundUser.email,
                 name: foundUser.name,
-            }, foundUser.role),
+            }),
         };
     };
 

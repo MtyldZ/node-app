@@ -4,8 +4,7 @@ interface UserFields extends EntityBase {
     email: string;
     password: string;
     name: string;
-    age: number;
-    role: 'user' | 'admin';
+    age?: number;
 }
 
 interface UserMethods {

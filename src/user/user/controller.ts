@@ -22,6 +22,7 @@ export class UserController extends ControllerBase {
             body('email').isEmail().isLength({min: 3}),
             body('password').isString().isLength({min: 3}),
             body('name').isString().isLength({min: 3}),
+            body('age').isNumeric().optional(),
         ));
         this.get('/', this.getList, filterMiddleware(
             filter('email'),
@@ -32,10 +33,10 @@ export class UserController extends ControllerBase {
             sort('age'),
             filter('created_at_time', {compareAs: 'gte', isDate: true}),
             filter('created_at_time', {compareAs: 'lte', isDate: true}),
-        ), authenticationMiddleware('admin'));
+        ), authenticationMiddleware('user'));
         this.get('/:id', this.getById, validationMiddleware(
             param('id').isMongoId(),
-        ), authenticationMiddleware('admin'));
+        ), authenticationMiddleware('user'));
         this.put('/password', this.changePassword, validationMiddleware(
             body('passwordOld').isString(),
             body('password').isString(),
@@ -44,7 +45,7 @@ export class UserController extends ControllerBase {
     }
 
     private register = async (request: Request<any, any, UserRegisterModel>) => {
-        const {email, password, name} = request.body;
+        const {email, password, name, age} = request.body;
 
         const userListWithSameEmail = await User.findByEmail(email);
         if (userListWithSameEmail.length !== 0) {
@@ -61,28 +62,20 @@ export class UserController extends ControllerBase {
             email,
             password: hashedPassword,
             name,
+            age,
             is_deleted: false,
-            role: 'user',
         });
 
-        return await newUser.save()
-            .then(() => {
-                return {
-                    token: sign<UserSessionModel>({
-                        id: newUser.id,
-                        email: newUser.email,
-                        name: newUser.name,
-                    }, 'user'),
-                };
-            })
-            .catch(() => {
-                throw new InternalServerError('Server error.');
-            });
+        await newUser.save();
+
+        return 'Ok';
     }
 
     private getList = async (request: Request, response: Response) => {
-        const users = await User.findByFilter(request.filter);
-        const userCount = await User.countDocuments(request.filter.search);
+        const users = await User.findByFilter(request.filter); // todo to add mode filter add find like chain
+        // const users = await User.findByFilter(request.filter).find({is_deleted: true});
+        const userCount = await User.countDocuments(request.filter.search); // todo to add filter add before countDocuments like chain
+        // const userCount = await User.find({is_deleted: true}).countDocuments(request.filter.search);
 
         response.set('x-total-count', userCount.toString());
         return users.map(user => this.toModel(user));
@@ -100,7 +93,7 @@ export class UserController extends ControllerBase {
     };
 
     private changePassword = async (request: Request<any, any, UserChangePasswordModel>) => {
-        const {passwordOld, password, passwordConfirm} = request.body;
+        const {passwordOld, password} = request.body;
         const {id} = request.authentication.user;
 
         const user = await User.findById(id);
@@ -112,18 +105,14 @@ export class UserController extends ControllerBase {
             throw new UnprocessableEntity('Old password is wrong.');
         }
 
-        if (password.length < 8) {
-            throw new UnprocessableEntity('Password must be longer than 8 characters');
-        }
-
-        if (!passwordChecker(password)) {
-            throw new UnprocessableEntity('Password must include at least one character and a digit.');
-        }
-
-        if (password !== passwordConfirm) {
-            throw new UnprocessableEntity('Password and PasswordConfirm are different');
-        }
-
+        // todo Client must check if new password is ok
+        // if (password.length < 8) {
+        //     throw new UnprocessableEntity('Password must be longer than 8 characters');
+        // }
+        //
+        // if (!passwordChecker(password)) {
+        //     throw new UnprocessableEntity('Password must include at least one character and a digit.');
+        // }
 
         user.password = hashSync(password, 10);
 
@@ -134,7 +123,7 @@ export class UserController extends ControllerBase {
                         id: user.id,
                         email: user.email,
                         name: user.name,
-                    }, user.role),
+                    }),
                 };
             })
             .catch(() => {

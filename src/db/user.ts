@@ -6,8 +6,7 @@ const userSchema = newSchema<UserEntity>({
     email: {type: String, required: true},
     password: {type: String, required: true},
     name: {type: String, required: true},
-    age: {type: Number, required: true},
-    role: {type: String},
+    age: {type: Number},
     is_deleted: {type: Boolean},
 });
 

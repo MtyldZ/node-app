@@ -16,5 +16,4 @@ export interface UserModel extends ModelBase {
 export interface UserChangePasswordModel {
     passwordOld: string;
     password: string;
-    passwordConfirm: string;
 }
